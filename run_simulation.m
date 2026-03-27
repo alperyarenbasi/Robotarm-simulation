@@ -30,19 +30,19 @@ u{3}  = out.u_out;
 %% Plot alle scenariene
 plot_scenario(x1{1}, u{1}, 'Nominell',          theta_ref);
 %animate_arm(x1{1}, l, theta_ref, Ts, 'Nominell');
-print_ytelse(x1{1}, 'Nominell' , theta_ref);
+print_ytelse(x1{1}, u{1}, 'Nominell' , theta_ref);
 fprintf('\n')
 
 
 plot_scenario(x1{2}, u{2}, 'Med forstyrrelse v', theta_ref);
 %animate_arm(x1{2}, l, theta_ref,0.1, 'Med forstyrrelse v');
-print_ytelse(x1{2}, 'Med forstyrrelse v', theta_ref);
+print_ytelse(x1{2}, u{2}, 'Med forstyrrelse v', theta_ref);
 fprintf('\n')
 
 
 plot_scenario(x1{3}, u{3}, 'Med målestøy w',     theta_ref);
 %animate_arm(x1{3}, l, theta_ref, Ts, 'Med målestøy w');
-print_ytelse(x1{3}, 'Med målestøy w', theta_ref);
+print_ytelse(x1{3}, u{3}, 'Med målestøy w', theta_ref);
 fprintf('\n')
 
 
@@ -73,26 +73,38 @@ function plot_scenario(x1, u, tittel, theta_ref)
 end
 
 
-function print_ytelse(x1, tittel, theta_ref)
-% HVA:    Printer ytelsesmetrikker for ett scenario via stepinfo() fra
-%         contol systems toolbox
+function print_ytelse(x1, u, tittel, theta_ref)
+% HVA:    Printer ytelsesmetrikker for ett scenario.
+%         stepinfo() fra Control System Toolbox gir stigetid, oversving og innsvingstid.
+%         IAE/ISE/ITAE beregnes med trapesintegrasjon (trapz).
+%         RMS(u) måler gjennomsnittlig styreinngang.
     info = stepinfo(x1.Data, x1.Time, theta_ref);
 
-    fprintf('\n--- %s ---\n', tittel);
-    fprintf('  Stigetid (t_r):       %.3f s\n', info.RiseTime);
-    fprintf('  Oversving:            %.1f %%\n', info.Overshoot);
-    fprintf('  Innsvingstid (t_s):   %.3f s\n', info.SettlingTime);
+    e    = theta_ref - x1.Data;
+    t    = x1.Time;
     %bruker siste 10% av datatil å regne stasjonærfeilen
-    e_ss = abs(mean(x1.Data(round(0.9*end):end)) - theta_ref);  
-    fprintf('  Stasjonærfeil (e_ss): %.4f rad (%.2f %%)\n', e_ss, ...
-        e_ss/theta_ref*100);
+    e_ss = abs(mean(x1.Data(round(0.9*end):end)) - theta_ref);
+
+    IAE   = trapz(t, abs(e));
+    ISE   = trapz(t, e.^2);
+    ITAE  = trapz(t, t .* abs(e));
+    RMS_u = sqrt(mean(u.Data.^2));
+
+    fprintf('\n--- %s ---\n', tittel);
+    fprintf('  Stigetid (t_r):       %.3f s\n',   info.RiseTime);
+    fprintf('  Oversving:            %.1f %%\n',   info.Overshoot);
+    fprintf('  Innsvingstid (t_s):   %.3f s\n',   info.SettlingTime);
+    fprintf('  Stasjonærfeil (e_ss): %.4f rad (%.2f %%)\n', e_ss, e_ss/theta_ref*100);
+    fprintf('  IAE:                  %.4f\n',      IAE);
+    fprintf('  ISE:                  %.4f\n',      ISE);
+    fprintf('  ITAE:                 %.4f\n',      ITAE);
+    fprintf('  RMS(u):               %.4f Nm\n',   RMS_u);
 end
 
 
 function animate_arm(x1, l, theta_ref, Ts, tittel)
 % HVA:    Animerer robotarmen basert på simuleringsdata.
-%         Brukt til debugging. Fikk hjelp av chatgpt på denne. Kan egt
-%         slettes
+%         Brukt til debugging. Fikk hjelp av chatgpt på denne. Kan egt slettes
     t_data  = x1.Time;
     x1_data = x1.Data;
 
