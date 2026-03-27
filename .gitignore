@@ -1,0 +1,7 @@
+*.slxc
+slprj/
+
+*.prj
+resources/
+
+*.asv
